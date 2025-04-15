@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Air Organ Room</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/addons/p5.sound.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ml5/0.12.2/ml5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+      color: white;
+      font-family: sans-serif;
+    }
+    #status {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 18px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 5px;
+      color: lime;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">🔍 손을 화면에 비춰보세요...</div>
+  <script>
+    let video;
+    let handpose;
+    let predictions = [];
+    let osc;
+    let soundOn = false;
+
+    function setup() {
+      createCanvas(640, 480);
+      video = createCapture(VIDEO);
+      video.size(width, height);
+      video.hide();
+
+      handpose = ml5.handpose(video, modelReady);
+      handpose.on("predict", results => {
+        predictions = results;
+      });
+
+      osc = new p5.Oscillator('sine');
+      osc.freq(440);
+      osc.amp(0);
+      osc.start();
+    }
+
+    function modelReady() {
+      console.log("🤖 모델 준비 완료");
+      document.getElementById("status").innerText = "🖐 손을 인식 중입니다...";
+    }
+
+    function draw() {
+      image(video, 0, 0, width, height);
+      drawKeypoints();
+
+      if (predictions.length > 0) {
+        let x = predictions[0].landmarks[9][0];
+        let freq = map(x, 0, width, 220, 880);
+        osc.freq(freq);
+        osc.amp(0.3, 0.1);
+
+        if (!soundOn) {
+          document.getElementById("status").innerText = "✅ 손 인식됨! 소리 출력 중 🎵";
+          soundOn = true;
+        }
+      } else {
+        osc.amp(0, 0.2);
+        if (soundOn) {
+          document.getElementById("status").innerText = "🔍 손을 화면에 비춰보세요...";
+          soundOn = false;
+        }
+      }
+    }
+
+    function drawKeypoints() {
+      for (let i = 0; i < predictions.length; i++) {
+        let prediction = predictions[i];
+        for (let j = 0; j < prediction.landmarks.length; j++) {
+          let [x, y, z] = prediction.landmarks[j];
+          fill(0, 255, 0);
+          noStroke();
+          ellipse(x, y, 8, 8);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
